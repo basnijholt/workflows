@@ -9,6 +9,36 @@ on:
         description: Overrides the detected slug
         required: false
         type: string
+      lint_addon:
+        description: Enable or disable lint-addon step
+        required: false
+        type: boolean
+        default: true
+      lint_hadolint:
+        description: Enable or disable lint-hadolint step
+        required: false
+        type: boolean
+        default: true
+      lint_json:
+        description: Enable or disable lint-json step
+        required: false
+        type: boolean
+        default: true
+      lint_prettier:
+        description: Enable or disable lint-prettier step
+        required: false
+        type: boolean
+        default: true
+      lint_shellcheck:
+        description: Enable or disable lint-shellcheck step
+        required: false
+        type: boolean
+        default: true
+      lint_yamllint:
+        description: Enable or disable lint-yamllint step
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -40,9 +70,33 @@ jobs:
             slug="${{ inputs.slug }}"
           fi
           echo "slug=$slug" >> "$GITHUB_OUTPUT"
+      - name: 🚀 Generate list of required jobs
+        id: required_jobs
+        run: |
+          required_jobs=("information")
+          if [[ "${{ inputs.lint_addon }}" == "true" ]]; then
+            required_jobs+=("lint-addon")
+          fi
+          if [[ "${{ inputs.lint_hadolint }}" == "true" ]]; then
+            required_jobs+=("lint-hadolint")
+          fi
+          if [[ "${{ inputs.lint_json }}" == "true" ]]; then
+            required_jobs+=("lint-json")
+          fi
+          if [[ "${{ inputs.lint_prettier }}" == "true" ]]; then
+            required_jobs+=("lint-prettier")
+          fi
+          if [[ "${{ inputs.lint_shellcheck }}" == "true" ]]; then
+            required_jobs+=("lint-shellcheck")
+          fi
+          if [[ "${{ inputs.lint_yamllint }}" == "true" ]]; then
+            required_jobs+=("lint-yamllint")
+          fi
+          echo "required_jobs=$(IFS=,; echo "${required_jobs[*]}")" >> "$GITHUB_OUTPUT"
 
   lint-addon:
     name: Lint Add-on
+    if: inputs.lint_addon
     needs:
       - information
     runs-on: ubuntu-latest
@@ -57,6 +111,7 @@ jobs:
 
   lint-hadolint:
     name: Hadolint
+    if: inputs.lint_hadolint
     needs:
       - information
     runs-on: ubuntu-latest
@@ -70,6 +125,7 @@ jobs:
 
   lint-json:
     name: JSON Lint
+    if: inputs.lint_json
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
@@ -81,6 +137,7 @@ jobs:
 
   lint-shellcheck:
     name: Shellcheck
+    if: inputs.lint_shellcheck
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
@@ -92,6 +149,7 @@ jobs:
 
   lint-yamllint:
     name: YAMLLint
+    if: inputs.lint_yamllint
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
@@ -101,6 +159,7 @@ jobs:
 
   lint-prettier:
     name: Prettier
+    if: inputs.lint_prettier
     runs-on: ubuntu-latest
     steps:
       - name: ⤵️ Check out code from GitHub
@@ -114,14 +173,7 @@ jobs:
 
   build:
     name: Build ${{ matrix.architecture }}
-    needs:
-      - information
-      - lint-addon
-      - lint-hadolint
-      - lint-json
-      - lint-prettier
-      - lint-shellcheck
-      - lint-yamllint
+    needs: ${{ needs.information.outputs.required_jobs }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
